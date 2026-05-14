@@ -5,7 +5,7 @@ clear; clc; close all;
 
 
 PLANT_DEN           = [1 3 2];
-SETTLE_THRESHOLD    = 0.02;
+SETTLE_THRESHOLD    = 0.00005;
 FINAL_AVG_WINDOW    = 50;
 DISTURBANCE_ONSET   = 2.0;
 DT                  = 0.01;
@@ -79,14 +79,26 @@ for i = 1:3
     peak_dev(i) = max(abs(yy));
 
     % -- Settling Time (manual, post-disturbance) -------------------------
-    y_post = abs(yy(idx_onset:end));
-    settled_idx = [];
-    for j = 1:length(y_post)
-        if all(y_post(j:end) < SETTLE_THRESHOLD)
-            settled_idx = j;
-            break;
-        end
+  % OLD — searches from j=1 (onset), so PID triggers instantly
+y_post = abs(yy(idx_onset:end));
+settled_idx = [];
+for j = 1:length(y_post)
+    if all(y_post(j:end) < SETTLE_THRESHOLD)
+        settled_idx = j;
+        break;
     end
+end
+
+% NEW — searches only AFTER the local peak (correct ISE definition)
+y_post = abs(yy(idx_onset:end));
+[~, peak_local_idx] = max(y_post);          % find peak index first
+settled_idx = [];
+for j = peak_local_idx:length(y_post)       % only search after peak
+    if all(y_post(j:end) < SETTLE_THRESHOLD)
+        settled_idx = j;
+        break;
+    end
+end
 
     if isempty(settled_idx)
         settle_time(i) = NaN;
